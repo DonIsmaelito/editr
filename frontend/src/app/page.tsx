@@ -11,6 +11,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import TextType from "@/components/TextType";
+import ShinyText from "@/components/ShinyText";
 import { Separator } from "@/components/ui/separator";
 import {
   Collapsible,
@@ -33,6 +34,45 @@ const recentItems = [
   "cooking tips",
   "cs 224w",
 ];
+
+const shinyTraceWords = new Set([
+  "interpreting",
+  "searching",
+  "chunking",
+  "ranking",
+  "pinpointing",
+  "youtube",
+  "tiktok",
+  "twitter",
+  "x",
+]);
+
+function renderLiveTraceText(text: string) {
+  const parts = text.split(/(\s+)/);
+
+  return parts.map((part, index) => {
+    const token = part.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    if (!token || !shinyTraceWords.has(token)) {
+      return <span key={`${part}-${index}`}>{part}</span>;
+    }
+
+    return (
+      <ShinyText
+        key={`${part}-${index}`}
+        text={part}
+        speed={2}
+        delay={0}
+        color="#9ca3af"
+        shineColor="#ffffff"
+        spread={120}
+        direction="left"
+        yoyo={false}
+        pauseOnHover={false}
+        disabled={false}
+      />
+    );
+  });
+}
 
 // ─────────────────────────────────────────────────────────────
 // Component
@@ -336,10 +376,12 @@ export default function Home() {
                       <div className="max-w-[85%] w-full">
                         {/* Single-line live trace (latest Convex message only) */}
                         {msg.isLoading && (
-                          <p className="mb-4 text-[15px] font-normal text-white/45 leading-relaxed">
-                            {msg.traceSteps && msg.traceSteps.length > 0
-                              ? msg.traceSteps[msg.traceSteps.length - 1].label
-                              : (msg.stage || "Thinking...")}
+                          <p className="mb-4 text-[17px] font-normal text-[#9ca3af] leading-relaxed">
+                            {renderLiveTraceText(
+                              msg.traceSteps && msg.traceSteps.length > 0
+                                ? msg.traceSteps[msg.traceSteps.length - 1].label
+                                : (msg.stage || "Thinking...")
+                            )}
                           </p>
                         )}
 
