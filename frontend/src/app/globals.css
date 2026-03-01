@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
+}
+
+/* ── Plain background ── */
+.mesh-bg {
+  background-color: #09090b;
+}
+
+/* ── Gradient border animation for chatbox ── */
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes gradient-rotate {
+  to {
+    --gradient-angle: 360deg;
+  }
+}
+
+.chatbox-border {
+  position: relative;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    #a855f7,
+    #3b82f6,
+    #2dd4bf,
+    #a855f7
+  );
+  animation: gradient-rotate 4s linear infinite;
+}
+
+/* Glow behind the chatbox border */
+.chatbox-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    #a855f7,
+    #3b82f6,
+    #2dd4bf,
+    #a855f7
+  );
+  animation: gradient-rotate 4s linear infinite;
+  filter: blur(16px);
+  opacity: 0.4;
+  z-index: -1;
+}
+
+/* ── Plain text (shimmer removed) ── */
+.text-shimmer {
+  color: #fafafa;
+}
+
+/* ── Glass panel ── */
+.glass {
+  background: rgba(12, 12, 14, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Typewriter cursor ── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Send button hover glow ── */
+.send-glow {
+  transition: all 0.3s ease;
+}
+.send-glow:not(:disabled):hover {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+}
+
+/* ── Suggestion pill hover ── */
+.pill-hover {
+  transition: all 0.2s ease;
+}
+.pill-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}

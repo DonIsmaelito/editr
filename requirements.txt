@@ -1,0 +1,31 @@
+# Findr Backend Dependencies
+
+# Core framework
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.10.0
+python-dotenv>=1.0.0
+
+# AI / LLM
+openai>=1.50.0
+
+# YouTube
+yt-dlp>=2024.10.0
+youtube-transcript-api>=0.6.0
+
+# HTTP
+requests>=2.31.0
+
+# Database (real-time)
+convex>=0.7.0
+
+# Browser infrastructure — Daytona sandboxes for headless screenshot capture
+daytona>=0.10.0
+
+# Browser infrastructure — Browser Use Skills for TikTok/X search
+browser-use-sdk>=3.0.0
+
+# Playwright — used inside Daytona sandboxes for YouTube screenshot capture
+# Not needed on the host machine, only inside the sandbox runtime.
+# Listed here for documentation; the sandbox installs it at runtime.
+# playwright>=1.40.0

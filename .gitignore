@@ -1,0 +1,39 @@
+# ── Environment / secrets ──
+.env
+.env.local
+.env.*.local
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ── Node / npm ──
+node_modules/
+package-lock.json
+
+# ── Convex generated ──
+convex/_generated/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Misc ──
+*.log
+*.pem
+.claude/
