@@ -29,3 +29,18 @@ browser-use-sdk>=3.0.0
 # Not needed on the host machine, only inside the sandbox runtime.
 # Listed here for documentation; the sandbox installs it at runtime.
 # playwright>=1.40.0
+
+# Editr — Google Cloud AI (Gemini, Imagen, Lyria)
+# Lyria RealTime uses the live music websocket APIs present in newer SDK releases.
+google-genai>=1.24.0
+numpy>=1.26.0
+librosa>=0.11.0
+pydub>=0.25.1
+Pillow>=10.4.0
+
+# Editr — Google Cloud Storage (edited video upload + signed URLs)
+google-cloud-storage>=2.14.0
+
+# Editr — PySceneDetect (edit level detection, runs inside Daytona sandbox)
+# Listed for documentation; the custom sandbox snapshot has it pre-installed.
+# scenedetect[opencv]>=0.6.0

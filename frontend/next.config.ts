@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
         source: "/api/findr/:path*",
         destination: "http://localhost:8001/:path*",
       },
+      {
+        source: "/api/editr/:path*",
+        destination: "http://localhost:8002/:path*",
+      },
     ];
   },
 };

@@ -97,4 +97,57 @@ export default defineSchema({
     segments: v.string(), // JSON-stringified transcript segments
     fetchedAt: v.number(),
   }).index("by_video", ["videoId"]),
+
+  // =================================================================
+  // Editr Tables
+  // =================================================================
+
+  // -----------------------------------------------------------------
+  // Jobs — Each edit request creates one job
+  // -----------------------------------------------------------------
+  jobs: defineTable({
+    username: v.string(),
+    platform: v.string(),
+    status: v.string(),
+    maxVideos: v.number(),
+    videosProcessed: v.number(),
+    profileDataJson: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_created", ["createdAt"]),
+
+  // -----------------------------------------------------------------
+  // Job Events — Step-by-step pipeline progress
+  // -----------------------------------------------------------------
+  jobEvents: defineTable({
+    jobId: v.id("jobs"),
+    eventType: v.string(),
+    message: v.optional(v.string()),
+    dataJson: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_job_created", ["jobId", "createdAt"]),
+
+  // -----------------------------------------------------------------
+  // Videos — Scraped + scored videos per job
+  // -----------------------------------------------------------------
+  videos: defineTable({
+    jobId: v.id("jobs"),
+    platform: v.string(),
+    videoId: v.string(),
+    originalUrl: v.string(),
+    title: v.string(),
+    duration: v.number(),
+    thumbnail: v.optional(v.string()),
+    views: v.number(),
+    likes: v.number(),
+    comments: v.number(),
+    shares: v.optional(v.number()),
+    fixabilityScore: v.number(),
+    editLevel: v.optional(v.string()),
+    selected: v.boolean(),
+    editStatus: v.string(),
+    editedVideoUrl: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_job", ["jobId"])
+    .index("by_job_selected", ["jobId", "selected"]),
 });

@@ -124,3 +124,14 @@ body {
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
 }
+
+.clip-player:fullscreen,
+.clip-player:-webkit-full-screen {
+  width: min(42vw, calc(88vh * 9 / 16));
+  height: min(88vh, calc(42vw * 16 / 9));
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  object-fit: contain;
+  background: #000;
+}

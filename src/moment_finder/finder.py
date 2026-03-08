@@ -48,13 +48,15 @@ RULES:
 6. Read the FULL transcript before choosing — the best starting point is
    often NOT at the beginning.
 7. Pick the point where the most relevant explanation/content BEGINS.
+8. Avoid generic intro/outro moments (greetings, sponsor reads, "welcome back")
+   unless the query is explicitly about those sections.
+9. Prefer the first timestamp where concrete query-related nouns/actions appear.
 
 RESPONSE FORMAT (strict JSON):
 {
   "moments": [
     {
       "start": 125.5,
-      "end": 158.0,
       "title": "Short descriptive title"
     }
   ]
@@ -164,16 +166,29 @@ class MomentFinder:
             # Build FoundMoment objects
             found: List[FoundMoment] = []
             for m in raw_moments:
-                start = float(m.get("start", 0))
-                end = float(m.get("end", start + 30))
-
-                # Sanity checks
-                if end <= start:
+                start = _coerce_seconds(
+                    m.get("start"),
+                    m.get("start_time"),
+                    m.get("timestamp"),
+                    m.get("time"),
+                )
+                if start is None:
+                    logger.warning(
+                        "[MomentFinder] Could not parse start time from model output: "
+                        f"{m}"
+                    )
                     continue
+
+                start = max(0.0, start)
+
+                # End time is optional; we keep it for metadata while embeds use start only.
+                end = _coerce_seconds(m.get("end"), m.get("end_time"))
+                if end is None or end <= start:
+                    end = start + 45
                 if end - start < 10:
                     end = start + 15  # Minimum 15s
 
-                embed_url = self._build_embed_url(video_id, start, end, platform)
+                embed_url = self._build_embed_url(video_id, start, platform)
 
                 found.append(FoundMoment(
                     video_id=video_id,
@@ -215,7 +230,6 @@ class MomentFinder:
         self,
         video_id: str,
         start: float,
-        end: float,
         platform: Platform,
     ) -> str:
         """Construct the platform-specific embed URL with start time only."""
@@ -239,3 +253,48 @@ def _fmt_time(seconds: float) -> str:
     m = int(seconds // 60)
     s = int(seconds % 60)
     return f"{m:02d}:{s:02d}"
+
+
+def _coerce_seconds(*values: Any) -> Optional[float]:
+    """
+    Parse a timestamp into seconds.
+
+    Accepts:
+    - numeric seconds (int/float or numeric string)
+    - "M:SS" / "MM:SS"
+    - "H:MM:SS"
+    """
+    for value in values:
+        if value is None:
+            continue
+
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                continue
+
+            # Numeric string seconds
+            try:
+                return float(raw)
+            except ValueError:
+                pass
+
+            # Timestamp string (M:SS, MM:SS, H:MM:SS)
+            parts = raw.split(":")
+            if 2 <= len(parts) <= 3:
+                try:
+                    nums = [int(p) for p in parts]
+                except ValueError:
+                    continue
+
+                if len(nums) == 2:
+                    minutes, seconds = nums
+                    return float(minutes * 60 + seconds)
+
+                hours, minutes, seconds = nums
+                return float(hours * 3600 + minutes * 60 + seconds)
+
+    return None

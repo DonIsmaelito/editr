@@ -10,6 +10,7 @@ This is the main entry point that wires all services together.
 
 import asyncio
 import logging
+import re
 import time
 import uuid
 from typing import Any, Awaitable, Callable, Dict, List, Optional
@@ -231,13 +232,28 @@ async def run_pipeline(
             "message": f"Searching {classification.platform.value}...",
         })
 
+        requested_count = _extract_requested_result_count(query)
+
         if classification.platform == Platform.YOUTUBE:
-            moments = await _process_youtube_subqueries(
-                classification,
-                search_id,
-                _emit_progress,
-                convex_enabled=convex_persistence_enabled,
-            )
+            if (
+                classification.output_format == OutputFormat.DIRECT
+                and requested_count > 1
+            ):
+                moments = await _process_youtube_requested_count(
+                    classification=classification,
+                    raw_query=query,
+                    requested_count=requested_count,
+                    search_id=search_id,
+                    on_progress=_emit_progress,
+                    convex_enabled=convex_persistence_enabled,
+                )
+            else:
+                moments = await _process_youtube_subqueries(
+                    classification,
+                    search_id,
+                    _emit_progress,
+                    convex_enabled=convex_persistence_enabled,
+                )
             result.moments = moments
         elif classification.platform == Platform.TIKTOK:
             moments = await _process_tiktok_subqueries(
@@ -380,6 +396,92 @@ async def _process_youtube_subqueries(
     return all_moments
 
 
+async def _process_youtube_requested_count(
+    classification: ClassifierOutput,
+    raw_query: str,
+    requested_count: int,
+    search_id: str,
+    on_progress: Optional[Callable[[str, Any], Awaitable[None]]] = None,
+    convex_enabled: bool = True,
+) -> List[FoundMoment]:
+    """
+    Direct YouTube path for explicit numeric asks (e.g., "find me 3 videos").
+
+    Treat count as a retrieval target, not semantic decomposition:
+    - Use one intent anchor query.
+    - Keep pulling unique candidates until requested_count is met
+      or attempts are exhausted.
+    """
+    all_moments: List[FoundMoment] = []
+    used_video_ids: List[str] = []
+    attempts = 0
+    max_attempts = max(3, requested_count * 3)
+
+    ordered_subqueries = sorted(classification.sub_queries, key=lambda s: s.order)
+    if ordered_subqueries:
+        anchor = ordered_subqueries[0]
+        anchor_query = anchor.proposed_video_query
+        anchor_reasoning = anchor.reasoning
+        anchor_title = anchor.title or "Result"
+    else:
+        anchor_query = raw_query
+        anchor_reasoning = f"User asked for {requested_count} relevant videos about: {raw_query}"
+        anchor_title = "Result"
+
+    logger.info(
+        f"[Pipeline] Explicit result-count mode | requested={requested_count} | "
+        f"anchor_query={anchor_query[:80]!r}"
+    )
+
+    if on_progress:
+        await on_progress("status", {
+            "stage": "processing",
+            "message": "Processing transcripts...",
+        })
+
+    while len(all_moments) < requested_count and attempts < max_attempts:
+        if on_progress:
+            await on_progress("status", {
+                "stage": "finding",
+                "message": (
+                    f"Finding result {len(all_moments) + 1} of {requested_count}..."
+                ),
+            })
+
+        moments = await _process_single_youtube_subquery(
+            sub_query=anchor_query,
+            reasoning=anchor_reasoning,
+            order=attempts,
+            sub_query_title=anchor_title,
+            search_id=search_id,
+            exclude_video_ids=used_video_ids,
+            on_progress=on_progress,
+        )
+        attempts += 1
+
+        if not moments:
+            continue
+
+        for m in moments:
+            if len(all_moments) >= requested_count:
+                break
+
+            m.sub_query_order = len(all_moments)
+            if not m.sub_query_title:
+                m.sub_query_title = f"Result {m.sub_query_order + 1}"
+
+            all_moments.append(m)
+            _add_result_to_convex(search_id, m, enabled=convex_enabled)
+            if on_progress:
+                await on_progress("moment", _moment_to_event(m))
+
+    logger.info(
+        f"[Pipeline] Explicit result-count mode complete | "
+        f"requested={requested_count}, returned={len(all_moments)}, attempts={attempts}"
+    )
+    return all_moments
+
+
 async def _process_single_youtube_subquery(
     sub_query: str,
     reasoning: str,
@@ -436,6 +538,11 @@ async def _process_single_youtube_subquery(
     video_data = video_results[0]
     video = video_data["video"]
     transcript = video_data["transcript"]
+
+    # Register this candidate immediately so repeated retrieval attempts can
+    # advance even if moment finding returns 0 for this video.
+    if exclude_video_ids is not None and video.video_id not in exclude_video_ids:
+        exclude_video_ids.append(video.video_id)
 
     logger.info(
         f"[SubQuery #{order}] Selected: \"{video.title}\" "
@@ -968,6 +1075,51 @@ async def _process_single_x_subquery(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
+
+
+def _extract_requested_result_count(query: str) -> int:
+    """
+    Extract explicit result count from the raw query.
+
+    Matches patterns such as:
+    - "3 videos", "2 clips", "4 results", "3 reviews"
+    - "three videos", "five reviews"
+
+    Returns 1 when no explicit count is detected.
+    """
+    text = (query or "").lower()
+    noun_pattern = r"(?:videos?|results?|clips?|posts?|reviews?)"
+
+    digit_match = re.search(rf"\b(\d+)\s+{noun_pattern}\b", text)
+    if digit_match:
+        try:
+            value = int(digit_match.group(1))
+            return max(1, min(value, 10))
+        except ValueError:
+            pass
+
+    word_match = re.search(
+        rf"\b({'|'.join(_NUMBER_WORDS.keys())})\s+{noun_pattern}\b",
+        text,
+    )
+    if word_match:
+        return _NUMBER_WORDS[word_match.group(1)]
+
+    return 1
+
 
 def _moment_to_event(m: FoundMoment) -> Dict[str, Any]:
     """Convert a FoundMoment to the SSE moment event shape."""

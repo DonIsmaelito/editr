@@ -124,6 +124,18 @@ Each sub-query has four fields:
 - "order": Zero-indexed sequence number. For structured output, this
   determines the collapsable section order from top to bottom.
 
+EXPLICIT RESULT COUNT PARAMETER:
+- If the user explicitly specifies a desired number of videos/results
+  (examples: "3 videos", "five clips", "2 posts"), treat this primarily as
+  a retrieval-count target, NOT as a reason to create multiple near-duplicate
+  semantic sub_queries.
+- For single-topic direct requests with explicit counts, prefer ONE strong
+  intent-focused sub_query rather than N repeated variants.
+- Only create multiple sub_queries when the user actually asked for multiple
+  distinct topics/steps (not just multiple results of one topic).
+- Parse both digits and number words (one, two, three, ... ten).
+- Do not invent a count if the user did not explicitly request one.
+
 PLATFORM-SPECIFIC NOTES:
 - YouTube: Full pipeline — search, transcript fetch, segment embedding,
   vector similarity search, exact moment finding. The embed will play
